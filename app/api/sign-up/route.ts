@@ -1,7 +1,7 @@
-import { sendVerificationEmail } from "@/helpers/sendVerificationEmail";
 import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/models/user.model";
 import bcrypt from "bcrypt"
+import { sendVerificationEmail } from "@/helpers/sendVerificationEmail";
 import { success } from "zod";
 
 export async function POST(request: Request) {
@@ -26,28 +26,27 @@ export async function POST(request: Request) {
         const verifyingUserByEmail = await UserModel.findOne({ email })
 
         // generating a verify code using math object classes
-        const verifyCode = Math.floor(10000 + Math.random() * 80000).toString()
-        
+        const verifyCode = Math.floor(100000 + Math.random() * 80000).toString()
+
         // scenerio when user is also present 
         if (verifyingUserByEmail) {
 
             // user is present and also verify jo here just send response that user is already present
-            if(verifyingUserByEmail.isVerified){
+            if (verifyingUserByEmail.isVerified) {
                 return Response.json({
-                    success : false,
-                    message : "user is already registered"
-                },{status : 400})
+                    success: false,
+                    message: "user already exist with this email"
+                }, { status: 400 })
+            } else {
+                const hashedPassword = await bcrypt.hash(password, 10)
+                // kya pata jo user exist karta ha to usko password yaad na ho ya kuch aur ho to hum existing passord ko update kar denge with hashedPassword
+                verifyingUserByEmail.password = hashedPassword
+                verifyingUserByEmail.verifyCode = verifyCode
+                verifyingUserByEmail.verifyCodeExpiry = new Date(Date.now() + 3600000)
+
+                await verifyingUserByEmail.save()
+
             }
-
-            const hashedPassword = await bcrypt.hash(password,10)
-
-            // kya pata jo user exist karta ha to usko password yaad na ho ya kuch aur ho to hum existing passord ko update kar denge with hashedPassword
-            verifyingUserByEmail.password =  hashedPassword
-            verifyingUserByEmail.verifyCode = verifyCode
-            verifyingUserByEmail.verifyCodeExpiry = new Date(Date.now() + 3600000)
-
-            await verifyingUserByEmail.save()
-        
             // scenerio when user is not present means new user,here we will create a new user ans store it in the db documents
         } else {
             const hashedPassword = await bcrypt.hash(password, 10)
@@ -65,7 +64,7 @@ export async function POST(request: Request) {
                 messages: []
             })
 
-            newUser.save()
+            await newUser.save()
 
         }
 
